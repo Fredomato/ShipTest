@@ -1398,6 +1398,21 @@ void RegisterRandomizerCompasses() {
         PatchCompasses();
     });
 }
+// Called in SoHMenuBar.cpp Line 1700
+void RegisterHeartSpawner() {
+    if (!gPlayState) {
+        return;
+    }
+
+    Player* player = GET_PLAYER(gPlayState);
+
+    Vec3f_ positional = player->actor.world.pos;
+    positional.y = player->actor.world.pos.y + 100.0f; // Change the 100.0f to make its start spawn higher
+    EnItem00* actor = Item_DropCollectible(gPlayState, &positional, ITEM00_HEART_PIECE); // Change this to be your spawned item
+    actor->actor.speedXZ = Rand_CenteredFloat(5.0f) + 8.0f; // Speed it spawns at, higher = farther from link
+}
+
+
 
 void InitMods() {
     BossRush_RegisterHooks();
@@ -1442,4 +1457,5 @@ void InitMods() {
     RegisterHurtContainerModeHandler();
     RegisterPauseMenuHooks();
     RandoKaleido_RegisterHooks();
+    RegisterHeartSpawner();
 }
