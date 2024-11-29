@@ -1695,6 +1695,13 @@ void DrawEnhancementsMenu() {
                 mTimeSplitWindow->ToggleVisibility();
             }
         }
+
+        ImGui::Separator();
+        // Change Button Name if desired, RegisterHeartSpawner() needs to be called for your event.
+        if (ImGui::Button("Spawn Heart Piece")) {
+            RegisterHeartSpawner();
+        }
+
         ImGui::PopStyleVar(3);
         ImGui::PopStyleColor(1);
 

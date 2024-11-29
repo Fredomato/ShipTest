@@ -18,6 +18,7 @@ void UpdateHyperBossesState();
 void InitMods();
 void UpdatePatchHand(); 
 void SwitchAge();
+void RegisterHeartSpawner();
 
 #ifdef __cplusplus
 }
