@@ -1406,13 +1406,22 @@ void RegisterHeartSpawner() {
 
     Player* player = GET_PLAYER(gPlayState);
 
-    Vec3f_ positional = player->actor.world.pos;
-    positional.y = player->actor.world.pos.y + 100.0f; // Change the 100.0f to make its start spawn higher
-    EnItem00* actor = Item_DropCollectible(gPlayState, &positional, ITEM00_HEART_PIECE); // Change this to be your spawned item
+    Vec3f pos;
+    pos.y = 100.0f;
+        if (GET_PLAYER(gPlayState) != nullptr) {
+            pos.x = GET_PLAYER(gPlayState)->actor.world.pos.x;
+            pos.z = GET_PLAYER(gPlayState)->actor.world.pos.z;
+        } else {
+            pos.x = 0;
+            pos.z = 0;
+        }
+        // X/Z anywhere from -100.0 to +100.0 from player
+        pos.x += (float)(Random(0, 200)) - 100.0f;
+        pos.z += (float)(Random(0, 200)) - 100.0f;
+
+    EnItem00* actor = Item_DropCollectible(gPlayState, &pos, ITEM00_HEART_PIECE); // Change this to be your spawned item
     actor->actor.speedXZ = Rand_CenteredFloat(5.0f) + 8.0f; // Speed it spawns at, higher = farther from link
 }
-
-
 
 void InitMods() {
     BossRush_RegisterHooks();
