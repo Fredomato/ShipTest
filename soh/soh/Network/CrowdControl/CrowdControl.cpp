@@ -9,6 +9,7 @@
 #include <spdlog/fmt/fmt.h>
 #include <regex>
 #include "soh/OTRGlobals.h"
+#include "soh/enhancements/mods.h"
 
 extern "C" {
 #include <z64.h>
@@ -390,8 +391,9 @@ CrowdControl::Effect* CrowdControl::ParseMessage(nlohmann::json dataReceived) {
 
         // Give Items and Consumables
         case kEffectAddHeartContainer:
+            RegisterHeartSpawner();
             effect->giEffect = new GameInteractionEffect::ModifyHeartContainers();
-            dynamic_cast<ParameterizedGameInteractionEffect*>(effect->giEffect)->parameters[0] = 1;
+            //dynamic_cast<ParameterizedGameInteractionEffect*>(effect->giEffect)->parameters[0] = 1;
             break;
         case kEffectFillMagic:
             effect->giEffect = new GameInteractionEffect::FillMagic();
