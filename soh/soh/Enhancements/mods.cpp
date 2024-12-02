@@ -1411,10 +1411,11 @@ void RegisterHeartSpawner() {
         return;
     }
 
+    int randHeartSpawn;
     Player* player = GET_PLAYER(gPlayState);
 
     Vec3f pos;
-    pos.y = 100.0f;
+    pos.y = 10.0f;
     if (GET_PLAYER(gPlayState) != nullptr) {
         pos.x = GET_PLAYER(gPlayState)->actor.world.pos.x;
         pos.z = GET_PLAYER(gPlayState)->actor.world.pos.z;
@@ -1422,13 +1423,32 @@ void RegisterHeartSpawner() {
         pos.x = 0;
         pos.z = 0;
     }
-    // X/Z anywhere from -100.0 to +100.0 from player
-    pos.x += (float)(Random(0, 200)) - 100.0f;
-    pos.z += (float)(Random(0, 200)) - 100.0f;
+    // X/Z anywhere from 100.0 to 500.0 from player
+    pos.x += (float)(Random(100, 500));
+    pos.z += (float)(Random(100, 500));
+
+    //randHeartSpawn = Random(0, 1);
 
     EnItem00* actor = Item_DropCollectible(gPlayState, &pos, ITEM00_HEART_PIECE); // Change this to be your spawned item
     actor->actor.speedXZ = Rand_CenteredFloat(5.0f) + 8.0f; // Speed it spawns at, higher = farther from link
     actorData.insert(&actor->actor);
+    Audio_PlaySoundGeneral(NA_SE_VO_NAVY_CALL, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
+                           &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+
+    //if (randHeartSpawn == 0) {
+    //    EnItem00* actor =
+    //        Item_DropCollectible(gPlayState, &pos, ITEM00_HEART_PIECE); // Change this to be your spawned item
+    //    actor->actor.speedXZ = Rand_CenteredFloat(5.0f) + 8.0f; // Speed it spawns at, higher = farther from link
+    //    actorData.insert(&actor->actor);
+    //} 
+    
+    //else {
+    //    EnItem00* actor =
+    //        Item_DropCollectible(gPlayState, &pos, ITEM00_HEART_CONTAINER); // Change this to be your spawned item
+    //    actor->actor.speedXZ = Rand_CenteredFloat(5.0f) + 8.0f; // Speed it spawns at, higher = farther from link
+    //    actorData.insert(&actor->actor);
+    //}
+    
 }
 
 void ChaosEventActorMagnet() {
