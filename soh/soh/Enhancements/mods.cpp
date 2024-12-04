@@ -55,6 +55,13 @@ extern PlayState* gPlayState;
 extern void Overlay_DisplayText(float duration, const char* text);
 }
 
+std::set<Actor*> actorData = {};
+std::vector<std::pair<Vec3f, Vec3s>> actorDefaultData = {};
+
+std::vector<uint32_t> actorCatList = {
+    ACTORCAT_MISC
+};
+
 // GreyScaleEndDlist
 #define dgEndGrayscaleAndEndDlistDL "__OTR__helpers/cosmetics/gEndGrayscaleAndEndDlistDL"
 static const ALIGN_ASSET(2) char gEndGrayscaleAndEndDlistDL[] = dgEndGrayscaleAndEndDlistDL;
@@ -1404,15 +1411,102 @@ void RegisterHeartSpawner() {
         return;
     }
 
+    int randHeartSpawn;
     Player* player = GET_PLAYER(gPlayState);
 
-    Vec3f_ positional = player->actor.world.pos;
-    positional.y = player->actor.world.pos.y + 100.0f; // Change the 100.0f to make its start spawn higher
-    EnItem00* actor = Item_DropCollectible(gPlayState, &positional, ITEM00_HEART_PIECE); // Change this to be your spawned item
+    Vec3f pos;
+    pos.y = 10.0f;
+    if (GET_PLAYER(gPlayState) != nullptr) {
+        pos.x = GET_PLAYER(gPlayState)->actor.world.pos.x;
+        pos.z = GET_PLAYER(gPlayState)->actor.world.pos.z;
+    } else {
+        pos.x = 0;
+        pos.z = 0;
+    }
+    // X/Z anywhere from 100.0 to 500.0 from player
+    pos.x += (float)(Random(100, 500));
+    pos.z += (float)(Random(100, 500));
+
+    //randHeartSpawn = Random(0, 1);
+
+    EnItem00* actor = Item_DropCollectible2(gPlayState, &pos, ITEM00_HEART_PIECE); // Change this to be your spawned item
     actor->actor.speedXZ = Rand_CenteredFloat(5.0f) + 8.0f; // Speed it spawns at, higher = farther from link
+    actorData.insert(&actor->actor);
+    Audio_PlaySoundGeneral(NA_SE_VO_NAVY_CALL, &actor->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
+                           &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+
+    //if (randHeartSpawn == 0) {
+    //    EnItem00* actor =
+    //        Item_DropCollectible(gPlayState, &pos, ITEM00_HEART_PIECE); // Change this to be your spawned item
+    //    actor->actor.speedXZ = Rand_CenteredFloat(5.0f) + 8.0f; // Speed it spawns at, higher = farther from link
+    //    actorData.insert(&actor->actor);
+    //} 
+    
+    //else {
+    //    EnItem00* actor =
+    //        Item_DropCollectible(gPlayState, &pos, ITEM00_HEART_CONTAINER); // Change this to be your spawned item
+    //    actor->actor.speedXZ = Rand_CenteredFloat(5.0f) + 8.0f; // Speed it spawns at, higher = farther from link
+    //    actorData.insert(&actor->actor);
+    //}
+    
 }
 
+void ChaosEventActorMagnet() {
+    if (!gPlayState) {
+        return;
+    }
+    actorData.clear();
+    actorDefaultData.clear();
+    for (int i = 0; i < actorCatList.size(); i++) {
+        ActorListEntry currList = gPlayState->actorCtx.actorLists[actorCatList[i]];
+        Actor* currAct = currList.head;
+        if (currAct != nullptr) {
+            while (currAct != nullptr) {
+                actorData.insert(currAct);
+                actorDefaultData.push_back({ currAct->world.pos, currAct->world.rot });
+                currAct = currAct->next;
+            }
+        }
+    }
+}
 
+void ChaosEventsRepeater() {
+    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorKill>([](void* actorRef) { 
+        actorData.erase((Actor*)actorRef);
+        });
+
+        GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorInit>(
+        [](void* actorRef) { Actor* actor = (Actor*)actorRef;
+        if (actor->id == ACTOR_EN_ITEM00 && (actor->params == ITEM00_HEART_PIECE || (actor->params == ITEM00_SOH_DUMMY))) {
+            EnItem00* item00 = (EnItem00*)actor;
+            if (actor->params != ITEM00_SOH_DUMMY || item00->itemEntry.getItemId == GI_HEART_PIECE ||
+                item00->itemEntry.getItemId == GI_HEART_CONTAINER ||
+                item00->itemEntry.getItemId == GI_HEART_CONTAINER_2) {
+                actorData.insert(actor);
+            }
+        }
+        });
+
+    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSceneInit>(
+        [](int16_t SceneNum) { actorData.clear(); 
+        });
+
+    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameFrameUpdate>([]() {
+
+        if (!gPlayState || GameInteractor::IsGameplayPaused()) {
+            return;
+        }
+
+        Player* player = GET_PLAYER(gPlayState);
+
+        for (auto& actorUpdate : actorData) {
+            Math_SmoothStepToF(&actorUpdate->world.pos.x, player->actor.world.pos.x + 0, 0.4f, 5.0f, 0.0f);
+            Math_SmoothStepToF(&actorUpdate->world.pos.y, player->actor.world.pos.y, 0.4f, 5.0f, 0.0f);
+            Math_SmoothStepToF(&actorUpdate->world.pos.z, player->actor.world.pos.z + 0, 0.4f, 5.0f, 0.0f);
+            actorUpdate->world.rot = player->actor.world.rot;
+        }
+    });
+}
 
 void InitMods() {
     BossRush_RegisterHooks();
@@ -1458,4 +1552,5 @@ void InitMods() {
     RegisterPauseMenuHooks();
     RandoKaleido_RegisterHooks();
     RegisterHeartSpawner();
+    ChaosEventsRepeater();
 }
