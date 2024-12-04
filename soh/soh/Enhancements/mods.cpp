@@ -1429,10 +1429,10 @@ void RegisterHeartSpawner() {
 
     //randHeartSpawn = Random(0, 1);
 
-    EnItem00* actor = Item_DropCollectible(gPlayState, &pos, ITEM00_HEART_PIECE); // Change this to be your spawned item
+    EnItem00* actor = Item_DropCollectible2(gPlayState, &pos, ITEM00_HEART_PIECE); // Change this to be your spawned item
     actor->actor.speedXZ = Rand_CenteredFloat(5.0f) + 8.0f; // Speed it spawns at, higher = farther from link
     actorData.insert(&actor->actor);
-    Audio_PlaySoundGeneral(NA_SE_VO_NAVY_CALL, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
+    Audio_PlaySoundGeneral(NA_SE_VO_NAVY_CALL, &actor->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
                            &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
 
     //if (randHeartSpawn == 0) {

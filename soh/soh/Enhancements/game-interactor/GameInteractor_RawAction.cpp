@@ -4,6 +4,7 @@
 #include "soh/Enhancements/randomizer/3drando/random.hpp"
 #include <math.h>
 #include "soh/Enhancements/debugger/colViewer.h"
+#include "soh/Enhancements/mods.h"
 
 extern "C" {
 #include "variables.h"
@@ -17,7 +18,8 @@ extern PlayState* gPlayState;
 #include "overlays/actors/ovl_En_Bom/z_en_bom.h"
 
 void GameInteractor::RawAction::AddOrRemoveHealthContainers(int16_t amount) {
-    gSaveContext.healthCapacity += amount * 0x10;
+    RegisterHeartSpawner();
+    //gSaveContext.healthCapacity += amount * 0x10;
 }
 
 void GameInteractor::RawAction::AddOrRemoveMagic(int8_t amount) {
