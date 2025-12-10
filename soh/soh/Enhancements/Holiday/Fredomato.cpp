@@ -409,6 +409,21 @@ void OnSceneInit() {
     SpawnCollectionPoint();
 }
 
+void TestEffect() {
+    //gSaveContext.health = 0;
+
+    Vec3f pos = FindValidPos(2000.0f);
+    if (pos.y == 9999.0f) {
+        return;
+    }
+
+    Actor* treetest =
+        Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_DOOR_ANA, pos.x, pos.y, pos.z, 0, 0, 0, 0, false);
+    midoGrottoInit = false;
+    DoorAna_SetupAction((DoorAna*)treetest, RandomGrotto_WaitOpen);
+    treetest->draw = RandomGrotto_Draw;
+}
+
 static void OnConfigurationChanged() {
     COND_HOOK(OnSceneSpawnActors, CVarGetInteger(CVAR("FredsQuest.Enabled"), 0), OnSceneInit);
 
@@ -432,6 +447,10 @@ static void OnConfigurationChanged() {
             *should = false;
         }
     });
+
+    COND_HOOK(OnPlayerUpdate, CVarGetInteger(CVAR("FredTest.Enabled"), 0), []() { 
+        TestEffect(); 
+    });
 }
 
 static void RegisterMenu() {
@@ -442,6 +461,11 @@ static void RegisterMenu() {
         .Options(UIWidgets::CheckboxOptions().Tooltip(
             "Random spikes will spawn around you at a configurable rate, chasing you for a short time before "
             "disappearing. If they touch you, you get knocked back."));
+
+    SohGui::mSohMenu->AddWidget(path, "FredTest", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR("FredTest.Enabled"))
+        .Options(UIWidgets::CheckboxOptions().Tooltip(
+            "Aaaaaaaaah!"));
 
     SohGui::mSohMenu->AddWidget(path, "Trap Lifetime (Seconds)", WIDGET_CVAR_SLIDER_INT)
         .CVar(CVAR("RandomTraps.Lifetime"))
@@ -461,5 +485,6 @@ static void RegisterMenu() {
 static RegisterShipInitFunc initFunc(OnConfigurationChanged, {
                                                                  CVAR("FredsQuest.Enabled"),
                                                                  CVAR("RandomTraps.Enabled"),
+                                                                 CVAR("FredTest.Enabled"),
                                                              });
 static RegisterMenuInitFunc menuInitFunc(RegisterMenu);
