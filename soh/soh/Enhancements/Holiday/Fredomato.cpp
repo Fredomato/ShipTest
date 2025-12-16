@@ -409,22 +409,37 @@ void OnSceneInit() {
     SpawnCollectionPoint();
 }
 
-void TestEffect() {
-    //gSaveContext.health = 0;
+float distanceToTree = 500.0f;
+float treeMoveSpeed = 50.0f;
 
-    Vec3f pos = FindValidPos(2000.0f);
-    if (pos.y == 9999.0f) {
-        return;
+void MoveTreeActors(void* treeActor) {
+    Actor* tree = (Actor*)treeActor;
+    CollisionPoly* outPoly;
+    s32 bgId;
+    f32 treePosY = tree->world.pos.y;
+    f32 floorY = treePosY;
+
+    if (tree->xzDistToPlayer <= distanceToTree && tree->params < 11) {
+        // Snap to floor, or remove if over void
+        treePosY += 200.0f;
+        floorY = BgCheck_EntityRaycastFloor4(&gPlayState->colCtx, &outPoly, &bgId, tree, &tree->world.pos);
+
+        if (floorY > BGCHECK_Y_MIN) {
+            tree->world.pos.y = floorY;
+        }
+
+        tree->world.pos.x++;
+        tree->world.pos.z++;
     }
-
-    Actor* treetest =
-        Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_DOOR_ANA, pos.x, pos.y, pos.z, 0, 0, 0, 0, false);
-    midoGrottoInit = false;
-    DoorAna_SetupAction((DoorAna*)treetest, RandomGrotto_WaitOpen);
-    treetest->draw = RandomGrotto_Draw;
 }
 
 static void OnConfigurationChanged() {
+    // New Fred Ketchmas
+    COND_ID_HOOK(OnActorUpdate, ACTOR_EN_WOOD02, CVarGetInteger(CVAR("FredTest.Enabled"), 0), [](void* actorRef) {
+        MoveTreeActors(actorRef);
+    });
+
+
     COND_HOOK(OnSceneSpawnActors, CVarGetInteger(CVAR("FredsQuest.Enabled"), 0), OnSceneInit);
 
     COND_HOOK(OnPlayerUpdate, CVarGetInteger(CVAR("RandomTraps.Enabled"), 0), []() {
@@ -448,9 +463,7 @@ static void OnConfigurationChanged() {
         }
     });
 
-    COND_HOOK(OnPlayerUpdate, CVarGetInteger(CVAR("FredTest.Enabled"), 0), []() { 
-        TestEffect(); 
-    });
+    
 }
 
 static void RegisterMenu() {
