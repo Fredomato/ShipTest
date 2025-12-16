@@ -410,28 +410,100 @@ void OnSceneInit() {
 }
 
 float distanceToTree = 500.0f;
-float treeMoveSpeed = 50.0f;
+float treeMoveSpeed = 1.0f;
 
 void MoveTreeActors(void* treeActor) {
     Actor* tree = (Actor*)treeActor;
     CollisionPoly* outPoly;
     s32 bgId;
-    f32 treePosY = tree->world.pos.y;
-    f32 floorY = treePosY;
 
-    if (tree->xzDistToPlayer <= distanceToTree && tree->params < 11) {
-        // Snap to floor, or remove if over void
-        treePosY += 200.0f;
-        floorY = BgCheck_EntityRaycastFloor4(&gPlayState->colCtx, &outPoly, &bgId, tree, &tree->world.pos);
+    f32 treePosY = tree->world.pos.y + 200.0f;
+    f32 floorY = BgCheck_EntityRaycastFloor4(&gPlayState->colCtx, &outPoly, &bgId, tree, &tree->world.pos);
 
-        if (floorY > BGCHECK_Y_MIN) {
-            tree->world.pos.y = floorY;
-        }
-
-        tree->world.pos.x++;
-        tree->world.pos.z++;
+    if (floorY > BGCHECK_Y_MIN) {
+        tree->world.pos.y = floorY;
     }
+
+    if (tree->xzDistToPlayer > distanceToTree || tree->params >= 11) {
+        return;
+    }
+
+    /* ---- DESIRED FLEE DIRECTION ---- */
+    Vec3f dir;
+    Player* player = GET_PLAYER(gPlayState);
+
+    dir.x = tree->world.pos.x - player->actor.world.pos.x;
+    dir.z = tree->world.pos.z - player->actor.world.pos.z;
+
+    dir.x += Rand_CenteredFloat(30.0f);
+    dir.z += Rand_CenteredFloat(30.0f);
+
+    f32 len = sqrtf(dir.x * dir.x + dir.z * dir.z);
+    if (len < 0.01f) {
+        return;
+    }
+
+    dir.x /= len;
+    dir.z /= len;
+
+    /* ---- HORIZONTAL MOVE ATTEMPT ---- */
+    Vec3f start = tree->world.pos;
+    Vec3f end = start;
+
+    end.x += dir.x * treeMoveSpeed;
+    end.z += dir.z * treeMoveSpeed;
+
+    Vec3f hitPos;
+
+    /* ---- WALL CHECK ONLY (NO FLOORS!) ---- */
+    if (BgCheck_EntityLineTest1(&gPlayState->colCtx, &start, &end, &hitPos, &outPoly, true, /* chkWall */
+                                false,                                                      /* chkFloor */
+                                false,                                                      /* chkCeil */
+                                false, &bgId)) {
+
+        /* ---- IGNORE FLOORS / SLOPES ---- */
+        if (fabsf(outPoly->normal.y) < 0.3f) {
+
+            /* Back up slightly from wall */
+            Vec3f normal = { outPoly->normal.x, 0.0f, outPoly->normal.z };
+
+            f32 nLen = sqrtf(normal.x * normal.x + normal.z * normal.z);
+            if (nLen > 0.01f) {
+                normal.x /= nLen;
+                normal.z /= nLen;
+            }
+
+            /* Snap to impact point */
+            end = hitPos;
+            end.x += normal.x * 2.0f;
+            end.z += normal.z * 2.0f;
+
+            /* ---- SLIDE VECTOR ---- */
+            f32 dot = dir.x * normal.x + dir.z * normal.z;
+            dir.x -= normal.x * dot;
+            dir.z -= normal.z * dot;
+
+            len = sqrtf(dir.x * dir.x + dir.z * dir.z);
+            if (len > 0.01f) {
+                dir.x /= len;
+                dir.z /= len;
+
+                /* Remaining slide distance */
+                end.x += dir.x * treeMoveSpeed;
+                end.z += dir.z * treeMoveSpeed;
+            }
+        } else {
+            /* Hit floor-like poly — cancel horizontal move */
+            end = start;
+        }
+    }
+
+    /* ---- APPLY FINAL POSITION ---- */
+    tree->world.pos.x = end.x;
+    tree->world.pos.z = end.z;
 }
+
+
 
 static void OnConfigurationChanged() {
     // New Fred Ketchmas
