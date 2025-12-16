@@ -409,22 +409,50 @@ void OnSceneInit() {
     SpawnCollectionPoint();
 }
 
-void TestEffect() {
-    //gSaveContext.health = 0;
+float distanceToTree = 500.0f;
+float treeMoveSpeed = 50.0f;
 
-    Vec3f pos = FindValidPos(2000.0f);
-    if (pos.y == 9999.0f) {
-        return;
+void MoveTreeActors(void* treeActor) {
+    Actor* tree = (Actor*)treeActor;
+    Player* player = GET_PLAYER(gPlayState);
+    CollisionPoly* outPoly;
+    s32 bgId;
+
+    if (tree->xzDistToPlayer <= distanceToTree && tree->params < 11) {
+
+        // --- Direction away from player ---
+        f32 dx = tree->world.pos.x - player->actor.world.pos.x;
+        f32 dz = tree->world.pos.z - player->actor.world.pos.z;
+
+        f32 dist = sqrtf(dx * dx + dz * dz);
+        if (dist > 0.001f) {
+            dx /= dist;
+            dz /= dist;
+        }
+
+        const f32 moveSpeed = 1.0f;
+
+        // 1. Move horizontally FIRST
+        tree->world.pos.x += dx * moveSpeed;
+        tree->world.pos.z += dz * moveSpeed;
+
+        // 2. Now resolve Y based on the NEW X/Z
+        f32 checkY = tree->world.pos.y + 200.0f;
+        Vec3f checkPos = tree->world.pos;
+        checkPos.y = checkY;
+
+        f32 floorY = BgCheck_EntityRaycastFloor4(&gPlayState->colCtx, &outPoly, &bgId, tree, &checkPos);
+
+        if (floorY > BGCHECK_Y_MIN) {
+            tree->world.pos.y = floorY;
+        }
     }
-
-    Actor* treetest =
-        Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_DOOR_ANA, pos.x, pos.y, pos.z, 0, 0, 0, 0, false);
-    midoGrottoInit = false;
-    DoorAna_SetupAction((DoorAna*)treetest, RandomGrotto_WaitOpen);
-    treetest->draw = RandomGrotto_Draw;
 }
 
 static void OnConfigurationChanged() {
+
+    COND_ID_HOOK(OnActorUpdate, ACTOR_EN_WOOD02, CVarGetInteger(CVAR("FredTest.Enabled"), 0), [](void* actorRef) { MoveTreeActors(actorRef); });
+
     COND_HOOK(OnSceneSpawnActors, CVarGetInteger(CVAR("FredsQuest.Enabled"), 0), OnSceneInit);
 
     COND_HOOK(OnPlayerUpdate, CVarGetInteger(CVAR("RandomTraps.Enabled"), 0), []() {
@@ -448,9 +476,7 @@ static void OnConfigurationChanged() {
         }
     });
 
-    COND_HOOK(OnPlayerUpdate, CVarGetInteger(CVAR("FredTest.Enabled"), 0), []() { 
-        TestEffect(); 
-    });
+
 }
 
 static void RegisterMenu() {
