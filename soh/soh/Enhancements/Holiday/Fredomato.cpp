@@ -503,14 +503,10 @@ void MoveTreeActors(void* treeActor) {
     tree->world.pos.z = end.z;
 }
 
-
-
 static void OnConfigurationChanged() {
     // New Fred Ketchmas
-    COND_ID_HOOK(OnActorUpdate, ACTOR_EN_WOOD02, CVarGetInteger(CVAR("FredTest.Enabled"), 0), [](void* actorRef) {
-        MoveTreeActors(actorRef);
-    });
-
+    COND_ID_HOOK(OnActorUpdate, ACTOR_EN_WOOD02, CVarGetInteger(CVAR("FredTest.Enabled"), 0),
+                 [](void* actorRef) { MoveTreeActors(actorRef); });
 
     COND_HOOK(OnSceneSpawnActors, CVarGetInteger(CVAR("FredsQuest.Enabled"), 0), OnSceneInit);
 
@@ -534,8 +530,6 @@ static void OnConfigurationChanged() {
             *should = false;
         }
     });
-
-    
 }
 
 static void RegisterMenu() {
@@ -549,8 +543,7 @@ static void RegisterMenu() {
 
     SohGui::mSohMenu->AddWidget(path, "FredTest", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR("FredTest.Enabled"))
-        .Options(UIWidgets::CheckboxOptions().Tooltip(
-            "Aaaaaaaaah!"));
+        .Options(UIWidgets::CheckboxOptions().Tooltip("Aaaaaaaaah!"));
 
     SohGui::mSohMenu->AddWidget(path, "Trap Lifetime (Seconds)", WIDGET_CVAR_SLIDER_INT)
         .CVar(CVAR("RandomTraps.Lifetime"))
