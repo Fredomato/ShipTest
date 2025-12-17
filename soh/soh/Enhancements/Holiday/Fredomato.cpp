@@ -11,6 +11,8 @@
 #include "soh/Enhancements/custom-item/CustomItem.h"
 #include "soh/Enhancements/nametag.h"
 
+#include "Fredomato.h"
+
 #include "objects/gameplay_field_keep/gameplay_field_keep.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "objects/object_md/object_md.h"
@@ -22,9 +24,14 @@ extern "C" {
 #include "functions.h"
 #include "variables.h"
 
+
+
 extern PlayState* gPlayState;
 void DoorAna_SetupAction(DoorAna* doorAna, DoorAnaActionFunc actionFunc);
 void DoorAna_GrabPlayer(DoorAna* doorAna, PlayState* play);
+
+#include "overlays/actors/ovl_Bg_Mjin/z_bg_mjin.h"
+s32 Object_Spawn(ObjectContext* objectCtx, s16 objectId);
 }
 extern GetItemEntry vanillaQueuedItemEntry;
 
@@ -410,7 +417,35 @@ void OnSceneInit() {
 }
 
 float distanceToTree = 500.0f;
-float treeMoveSpeed = 1.0f;
+float treeMoveSpeed = 6.0f;
+uint32_t corralledTrees = 0;
+std::vector<std::pair<Actor*, Vec3f>> treeSlots;
+
+std::vector<std::pair<Actor*, Vec3f>> CreatePadGrid38(const Vec3f& center) {
+    std::vector<std::pair<Actor*, Vec3f>> positions;
+    positions.reserve(38);
+
+    const int cols = 6;
+    const int rows = 7;
+    const float spacing = 80.0f; // adjust as needed
+
+    // Offset so grid is centered on the pad
+    const float startX = center.x - ((cols - 1) * spacing * 0.5f);
+    const float startZ = center.z - ((rows - 1) * spacing * 0.5f);
+
+    for (int r = 0; r < rows && positions.size() < 38; ++r) {
+        for (int c = 0; c < cols && positions.size() < 38; ++c) {
+            Vec3f pos;
+            pos.x = startX + (c * spacing);
+            pos.y = center.y;
+            pos.z = startZ + (r * spacing);
+
+            positions.push_back({ NULL, pos });
+        }
+    }
+
+    return positions;
+}
 
 void MoveTreeActors(void* treeActor) {
     Actor* tree = (Actor*)treeActor;
@@ -505,10 +540,49 @@ void MoveTreeActors(void* treeActor) {
 
 static void OnConfigurationChanged() {
     // New Fred Ketchmas
-    COND_ID_HOOK(OnActorUpdate, ACTOR_EN_WOOD02, CVarGetInteger(CVAR("FredTest.Enabled"), 0),
-                 [](void* actorRef) { MoveTreeActors(actorRef); });
+    COND_ID_HOOK(OnActorUpdate, ACTOR_EN_WOOD02, CVarGetInteger(CVAR("FredTest.Enabled"), 0), [](void* actorRef) { 
+        Actor* treeActor = (Actor*)actorRef;
+        bool treeSlotted = false;
+        for (auto& tree : treeSlots) {
+            if (tree.first == treeActor) {
+                treeSlotted = true;
+                treeActor->world.pos.x = tree.second.x;
+                treeActor->world.pos.y = tree.second.y;
+                treeActor->world.pos.z = tree.second.z;
+                break;
+            }
+        }
 
-    COND_HOOK(OnSceneSpawnActors, CVarGetInteger(CVAR("FredsQuest.Enabled"), 0), OnSceneInit);
+        if (!treeSlotted) {
+            MoveTreeActors(actorRef);
+   
+            Actor* warpActor = Actor_FindNearby(gPlayState, (Actor*)actorRef, ACTOR_BG_MJIN, ACTORCAT_BG, 45.0f);
+            if (warpActor != NULL) {
+                corralledTrees++;
+
+                for (auto& slot : treeSlots) {
+                    if (slot.first == NULL) {
+                        slot.first = (Actor*)actorRef;
+                        break;
+                    }
+                }
+
+                Audio_PlaySoundGeneral(NA_SE_SY_ATTENTION_ON, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
+                                       &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+            }
+        }
+    });
+    COND_HOOK(OnSceneSpawnActors, CVarGetInteger(CVAR("FredTest.Enabled"), 0), []() {
+        if (gPlayState->sceneNum == SCENE_HYRULE_FIELD) {
+            treeSlots = CreatePadGrid38({ 335.571f, -0.0f, 2677.854f });
+            corralledTrees = 0;
+            Object_Spawn(&gPlayState->objectCtx, OBJECT_MJIN);
+            Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_BG_MJIN, 335.571f, -0.0f, 2677.854f, 0, 0, 0, 1,
+                        false);
+        }
+    });
+
+    //COND_HOOK(OnSceneSpawnActors, CVarGetInteger(CVAR("FredsQuest.Enabled"), 0), OnSceneInit);
 
     COND_HOOK(OnPlayerUpdate, CVarGetInteger(CVAR("RandomTraps.Enabled"), 0), []() {
         if (rand() % CVarGetInteger(CVAR("RandomTraps.SpawnChance"), 400) == 0) {
@@ -543,6 +617,7 @@ static void RegisterMenu() {
 
     SohGui::mSohMenu->AddWidget(path, "FredTest", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR("FredTest.Enabled"))
+        .Callback([](WidgetInfo& info) { OnConfigurationChanged(); })
         .Options(UIWidgets::CheckboxOptions().Tooltip("Aaaaaaaaah!"));
 
     SohGui::mSohMenu->AddWidget(path, "Trap Lifetime (Seconds)", WIDGET_CVAR_SLIDER_INT)

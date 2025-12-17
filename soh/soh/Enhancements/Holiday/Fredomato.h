@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 bool HandleTreeBonk(Actor* actor);
+extern uint32_t corralledTrees;
 
 #ifdef __cplusplus
 }
