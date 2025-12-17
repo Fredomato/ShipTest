@@ -19,6 +19,7 @@
 #include "objects/object_trap/object_trap.h"
 #include "objects/object_toryo/object_toryo.h"
 #include "src/overlays/actors/ovl_Door_Ana/z_door_ana.h"
+
 extern "C" {
 #include "macros.h"
 #include "functions.h"
