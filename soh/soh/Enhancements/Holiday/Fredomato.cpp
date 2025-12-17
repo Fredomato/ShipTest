@@ -11,12 +11,15 @@
 #include "soh/Enhancements/custom-item/CustomItem.h"
 #include "soh/Enhancements/nametag.h"
 
+#include "Fredomato.h"
+
 #include "objects/gameplay_field_keep/gameplay_field_keep.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "objects/object_md/object_md.h"
 #include "objects/object_trap/object_trap.h"
 #include "objects/object_toryo/object_toryo.h"
 #include "src/overlays/actors/ovl_Door_Ana/z_door_ana.h"
+
 extern "C" {
 #include "macros.h"
 #include "functions.h"
@@ -25,6 +28,8 @@ extern "C" {
 extern PlayState* gPlayState;
 void DoorAna_SetupAction(DoorAna* doorAna, DoorAnaActionFunc actionFunc);
 void DoorAna_GrabPlayer(DoorAna* doorAna, PlayState* play);
+#include "overlays/actors/ovl_Bg_Mjin/z_bg_mjin.h"
+s32 Object_Spawn(ObjectContext* objectCtx, s16 objectId);
 }
 extern GetItemEntry vanillaQueuedItemEntry;
 
@@ -410,48 +415,124 @@ void OnSceneInit() {
 }
 
 float distanceToTree = 500.0f;
-float treeMoveSpeed = 50.0f;
+float treeMoveSpeed = 6.0f;
+uint32_t corralledTrees = 0;
+std::vector<std::pair<Actor*, Vec3f>> treeSlots;
 
 void MoveTreeActors(void* treeActor) {
     Actor* tree = (Actor*)treeActor;
-    Player* player = GET_PLAYER(gPlayState);
     CollisionPoly* outPoly;
     s32 bgId;
 
-    if (tree->xzDistToPlayer <= distanceToTree && tree->params < 11) {
+    f32 treePosY = tree->world.pos.y + 200.0f;
+    f32 floorY = BgCheck_EntityRaycastFloor4(&gPlayState->colCtx, &outPoly, &bgId, tree, &tree->world.pos);
 
-        // --- Direction away from player ---
-        f32 dx = tree->world.pos.x - player->actor.world.pos.x;
-        f32 dz = tree->world.pos.z - player->actor.world.pos.z;
+    if (floorY > BGCHECK_Y_MIN) {
+        tree->world.pos.y = floorY;
+    }
 
-        f32 dist = sqrtf(dx * dx + dz * dz);
-        if (dist > 0.001f) {
-            dx /= dist;
-            dz /= dist;
-        }
+    if (tree->xzDistToPlayer > distanceToTree || tree->params >= 11) {
+        return;
+    }
 
-        const f32 moveSpeed = 1.0f;
+    /* ---- DESIRED FLEE DIRECTION ---- */
+    Vec3f dir;
+    Player* player = GET_PLAYER(gPlayState);
 
-        // 1. Move horizontally FIRST
-        tree->world.pos.x += dx * moveSpeed;
-        tree->world.pos.z += dz * moveSpeed;
+    dir.x = tree->world.pos.x - player->actor.world.pos.x;
+    dir.z = tree->world.pos.z - player->actor.world.pos.z;
 
-        // 2. Now resolve Y based on the NEW X/Z
-        f32 checkY = tree->world.pos.y + 200.0f;
-        Vec3f checkPos = tree->world.pos;
-        checkPos.y = checkY;
+    dir.x += Rand_CenteredFloat(30.0f);
+    dir.z += Rand_CenteredFloat(30.0f);
 
-        f32 floorY = BgCheck_EntityRaycastFloor4(&gPlayState->colCtx, &outPoly, &bgId, tree, &checkPos);
+    f32 len = sqrtf(dir.x * dir.x + dir.z * dir.z);
+    if (len < 0.01f) {
+        return;
+    }
 
-        if (floorY > BGCHECK_Y_MIN) {
-            tree->world.pos.y = floorY;
+    dir.x /= len;
+    dir.z /= len;
+
+    /* ---- HORIZONTAL MOVE ATTEMPT ---- */
+    Vec3f start = tree->world.pos;
+    Vec3f end = start;
+
+    end.x += dir.x * treeMoveSpeed;
+    end.z += dir.z * treeMoveSpeed;
+
+    Vec3f hitPos;
+
+    /* ---- WALL CHECK ONLY (NO FLOORS!) ---- */
+    if (BgCheck_EntityLineTest1(&gPlayState->colCtx, &start, &end, &hitPos, &outPoly, true, /* chkWall */
+                                false,                                                      /* chkFloor */
+                                false,                                                      /* chkCeil */
+                                false, &bgId)) {
+
+        /* ---- IGNORE FLOORS / SLOPES ---- */
+        if (fabsf(outPoly->normal.y) < 0.3f) {
+
+            /* Back up slightly from wall */
+            Vec3f normal = { outPoly->normal.x, 0.0f, outPoly->normal.z };
+
+            f32 nLen = sqrtf(normal.x * normal.x + normal.z * normal.z);
+            if (nLen > 0.01f) {
+                normal.x /= nLen;
+                normal.z /= nLen;
+            }
+
+            /* Snap to impact point */
+            end = hitPos;
+            end.x += normal.x * 2.0f;
+            end.z += normal.z * 2.0f;
+
+            /* ---- SLIDE VECTOR ---- */
+            f32 dot = dir.x * normal.x + dir.z * normal.z;
+            dir.x -= normal.x * dot;
+            dir.z -= normal.z * dot;
+
+            len = sqrtf(dir.x * dir.x + dir.z * dir.z);
+            if (len > 0.01f) {
+                dir.x /= len;
+                dir.z /= len;
+
+                /* Remaining slide distance */
+                end.x += dir.x * treeMoveSpeed;
+                end.z += dir.z * treeMoveSpeed;
+            }
+        } else {
+            /* Hit floor-like poly — cancel horizontal move */
+            end = start;
         }
     }
+
+    /* ---- APPLY FINAL POSITION ---- */
+    tree->world.pos.x = end.x;
+    tree->world.pos.z = end.z;
 }
 
 static void OnConfigurationChanged() {
 
-    COND_ID_HOOK(OnActorUpdate, ACTOR_EN_WOOD02, CVarGetInteger(CVAR("FredTest.Enabled"), 0), [](void* actorRef) { MoveTreeActors(actorRef); });
+    COND_ID_HOOK(OnActorUpdate, ACTOR_EN_WOOD02, CVarGetInteger(CVAR("FredTest.Enabled"), 0), [](void* actorRef) { 
+        MoveTreeActors(actorRef); 
+        
+        Actor* warpActor = Actor_FindNearby(gPlayState, (Actor*)actorRef, ACTOR_BG_MJIN, ACTORCAT_BG, 45.0f);
+        if (warpActor != NULL) {
+            Actor_Kill((Actor*)actorRef);
+            corralledTrees++;
+            Audio_PlaySoundGeneral(NA_SE_SY_ATTENTION_ON, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
+                                   &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+        }
+        
+        });
+
+    COND_HOOK(OnSceneSpawnActors, CVarGetInteger(CVAR("FredTest.Enabled"), 0), []() {
+        if (gPlayState->sceneNum == SCENE_HYRULE_FIELD) {
+            corralledTrees = 0;
+            Object_Spawn(&gPlayState->objectCtx, OBJECT_MJIN);
+            Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_BG_MJIN, 335.571f, -0.0f, 2677.854f, 0, 0, 0, 1,
+                        false);
+        }
+    });
 
     COND_HOOK(OnSceneSpawnActors, CVarGetInteger(CVAR("FredsQuest.Enabled"), 0), OnSceneInit);
 
@@ -490,6 +571,7 @@ static void RegisterMenu() {
 
     SohGui::mSohMenu->AddWidget(path, "FredTest", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR("FredTest.Enabled"))
+        .Callback([](WidgetInfo& info) { OnConfigurationChanged(); })
         .Options(UIWidgets::CheckboxOptions().Tooltip(
             "Aaaaaaaaah!"));
 

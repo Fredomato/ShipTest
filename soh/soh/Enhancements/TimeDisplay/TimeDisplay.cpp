@@ -42,7 +42,8 @@ const std::vector<TimeObject> timeDisplayList = {
     { DISPLAY_TIME_OF_DAY, "Display Time of Day", CVAR_TIME_DISPLAY("Timers.TimeofDay") },
     { DISPLAY_CONDITIONAL_TIMER, "Display Conditional Timer", CVAR_TIME_DISPLAY("Timers.HotWater") },
     { DISPLAY_NAVI_TIMER, "Display Navi Timer", CVAR_TIME_DISPLAY("Timers.NaviTimer") },
-    { DISPLAY_FRED_QUEST, "Display Fred's Quest", CVAR_TIME_DISPLAY("Timers.FredsQuest") }
+    { DISPLAY_FRED_QUEST, "Display Fred's Quest", CVAR_TIME_DISPLAY("Timers.FredsQuest") },
+    { DISPLAY_TREE_CORRAL, "Display Tree Corral", CVAR_TIME_DISPLAY("Timers.TreeCorral") },
 };
 
 static std::vector<TimeObject> activeTimers;
@@ -140,6 +141,10 @@ static void TimeDisplayGetTimer(uint32_t timeID) {
             timeDisplayTime = std::to_string(FredsQuestWoodOnHand) + "/" + std::to_string(FredsQuestWoodCollected) +
                               "/" + std::to_string(CVarGetInteger("gHoliday.Fredomato.FredsQuest.WoodNeeded", 300));
             textureDisplay = Ship::Context::GetInstance()->GetWindow()->GetGui()->GetTextureByName("ITEM_STICK");
+            break;
+        case DISPLAY_TREE_CORRAL:
+            timeDisplayTime = std::to_string(corralledTrees);
+            break;
         default:
             break;
     }
