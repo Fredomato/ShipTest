@@ -144,6 +144,7 @@ static void TimeDisplayGetTimer(uint32_t timeID) {
             break;
         case DISPLAY_TREE_CORRAL:
             timeDisplayTime = std::to_string(corralledTrees);
+            textureDisplay = Ship::Context::GetInstance()->GetWindow()->GetGui()->GetTextureByName("ITEM_STICK");
             break;
         default:
             break;

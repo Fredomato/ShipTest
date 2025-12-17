@@ -19,7 +19,7 @@ typedef enum TimerDisplay {
     DISPLAY_CONDITIONAL_TIMER,
     DISPLAY_NAVI_TIMER,
     DISPLAY_FRED_QUEST,
-    DISPLAY_TREE_CORRAL
+    DISPLAY_TREE_CORRAL,
 } TimerDisplay;
 
 typedef enum NaviTimerValues {
