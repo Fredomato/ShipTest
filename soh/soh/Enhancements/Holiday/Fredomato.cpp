@@ -417,10 +417,11 @@ void OnSceneInit() {
     SpawnCollectionPoint();
 }
 
-float distanceToTree = 500.0f;
-float treeMoveSpeed = 6.0f;
+float distanceToTree = 400.0f;
+float treeMoveSpeed = 10.0f;
 uint32_t corralledTrees = 0;
 std::vector<std::pair<Actor*, Vec3f>> treeSlots;
+bool isFollowing = false;
 
 std::vector<std::pair<Actor*, Vec3f>> CreatePadGrid38(const Vec3f& center) {
     std::vector<std::pair<Actor*, Vec3f>> positions;
@@ -453,8 +454,11 @@ void MoveTreeActors(void* treeActor) {
     CollisionPoly* outPoly;
     s32 bgId;
 
+    Vec3f floorCheckPos = tree->world.pos;
+    floorCheckPos.y += 200.0f; // must be higher than max slope step
+
     f32 treePosY = tree->world.pos.y + 200.0f;
-    f32 floorY = BgCheck_EntityRaycastFloor4(&gPlayState->colCtx, &outPoly, &bgId, tree, &tree->world.pos);
+    f32 floorY = BgCheck_EntityRaycastFloor4(&gPlayState->colCtx, &outPoly, &bgId, tree, &floorCheckPos);
 
     if (floorY > BGCHECK_Y_MIN) {
         tree->world.pos.y = floorY;
@@ -468,8 +472,14 @@ void MoveTreeActors(void* treeActor) {
     Vec3f dir;
     Player* player = GET_PLAYER(gPlayState);
 
-    dir.x = tree->world.pos.x - player->actor.world.pos.x;
-    dir.z = tree->world.pos.z - player->actor.world.pos.z;
+    if (tree->flags & ACTOR_FLAG_HOOKSHOT_ATTACHED) {
+        isFollowing = true;
+    }
+
+    float sign = isFollowing ? -1.0f : 1.0f;
+
+    dir.x = tree->world.pos.x - player->actor.world.pos.x * sign;
+    dir.z = tree->world.pos.z - player->actor.world.pos.z * sign;
 
     dir.x += Rand_CenteredFloat(30.0f);
     dir.z += Rand_CenteredFloat(30.0f);
