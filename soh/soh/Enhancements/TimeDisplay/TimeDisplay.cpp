@@ -143,7 +143,7 @@ static void TimeDisplayGetTimer(uint32_t timeID) {
             textureDisplay = Ship::Context::GetInstance()->GetWindow()->GetGui()->GetTextureByName("ITEM_STICK");
             break;
         case DISPLAY_TREE_CORRAL:
-            timeDisplayTime = std::to_string(corralledTrees);
+            timeDisplayTime = std::to_string(corralledTrees) + "/" + std::to_string(30);
             textureDisplay = Ship::Context::GetInstance()->GetWindow()->GetGui()->GetTextureByName("ITEM_STICK");
             break;
         default:
@@ -201,7 +201,7 @@ void TimeDisplayWindow::Draw() {
             ImGui::Image(textureDisplay, ImVec2(16.0f * fontScale, 16.0f * fontScale));
             ImGui::TableNextColumn();
 
-            if (timers.timeID == DISPLAY_FRED_QUEST) {
+            if (timers.timeID == DISPLAY_FRED_QUEST || timers.timeID == DISPLAY_TREE_CORRAL) {
                 ImGui::Text("%s", timeDisplayTime.c_str());
                 ImGui::PopID();
                 continue;

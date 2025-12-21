@@ -427,11 +427,24 @@ float distanceToFollow = 100.0f;
 float treeMoveSpeed = 5.0f;
 uint32_t corralledTrees = 0;
 std::vector<std::pair<Actor*, Vec3f>> treeSlots;
-bool isFollowing;
+std::vector<std::pair<Actor*, bool>> treeStates;
 
-void SetFollowing(void* treeActor) {
-    Actor* tree = (Actor*)treeActor;
-    Player* player = GET_PLAYER(gPlayState);
+std::pair<Actor*, bool> GetTreeState(Actor* treeActor) {
+    for (auto& state : treeStates) {
+        if (state.first == treeActor) {
+            return state;
+        }
+    }
+}
+
+void SetTreeState(Actor* treeActor, bool isState) {
+    for (auto& state : treeStates) {
+        if (state.first == treeActor) {
+            state.second = isState;
+            state.second = isState;
+            break;
+        }
+    }
 }
 
 std::vector<std::pair<Actor*, Vec3f>> CreatePadGrid38(const Vec3f& center) {
@@ -460,8 +473,32 @@ std::vector<std::pair<Actor*, Vec3f>> CreatePadGrid38(const Vec3f& center) {
     return positions;
 }
 
+void DrawFollowingTreeRopes(PlayState* play) {
+    // Iterate over all trees in your vector-of-bools system
+    for (auto& treeState : treeVector) {
+        Actor* tree = treeState.first;
+        bool following = treeState.second;
+        if (!following || tree == NULL)
+            continue;
+
+        Player* player = GET_PLAYER(play);
+
+        // Compute rope endpoints
+        Vec3f start = player->actor.world.pos;
+        start.y += 20.0f; // offset to Link's hand / hookshot tip
+
+        Vec3f end = tree->world.pos;
+        end.y += 50.0f; // offset to tree trunk top
+
+        // Draw the rope
+        DrawRope(start, end, 0xFFFFFF, 2.0f); // color: white, width: 2.0 units
+    }
+}
+
+
 void MoveTreeActors(void* treeActor) {
     Actor* tree = (Actor*)treeActor;
+    std::pair<Actor*, bool> currentState = GetTreeState(tree);
     CollisionPoly* outPoly;
     s32 bgId;
 
@@ -476,7 +513,10 @@ void MoveTreeActors(void* treeActor) {
     }
 
     if (tree->xzDistToPlayer < distanceToFollow || tree->params >= 11) {
-        isFollowing = true;
+        if (currentState.first != NULL && currentState.second == false) {
+            currentState.second = true;
+            SetTreeState(tree, true);
+        }
     }
 
     float speed = treeMoveSpeed;
@@ -507,7 +547,7 @@ void MoveTreeActors(void* treeActor) {
     Vec3f start = tree->world.pos;
     Vec3f end = start;
 
-    float sign = isFollowing ? -1.0f : 1.0f;
+    float sign = currentState.second ? -1.0f : 1.0f;
 
     end.x += dir.x * treeMoveSpeed * sign;
     end.z += dir.z * treeMoveSpeed * sign;
@@ -566,6 +606,18 @@ static void OnConfigurationChanged() {
     // New Fred Ketchmas
     COND_ID_HOOK(OnActorUpdate, ACTOR_EN_WOOD02, CVarGetInteger(CVAR("FredTest.Enabled"), 0), [](void* actorRef) { 
         Actor* treeActor = (Actor*)actorRef;
+
+        bool treeFound = false;
+        for (auto& state : treeStates) {
+            if (state.first == treeActor) {
+                treeFound = true;
+                break;
+            }
+        }
+        if (!treeFound) {
+            treeStates.push_back({ treeActor, false });
+        }
+
         bool treeSlotted = false;
         for (auto& tree : treeSlots) {
             if (tree.first == treeActor) {
@@ -600,7 +652,6 @@ static void OnConfigurationChanged() {
         if (gPlayState->sceneNum == SCENE_HYRULE_FIELD) {
             treeSlots = CreatePadGrid38({ 335.571f, -0.0f, 2677.854f });
             corralledTrees = 0;
-            isFollowing = false;
             Object_Spawn(&gPlayState->objectCtx, OBJECT_MJIN);
             Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_BG_MJIN, 335.571f, -0.0f, 2677.854f, 0, 0, 0, 1,
                         false);
