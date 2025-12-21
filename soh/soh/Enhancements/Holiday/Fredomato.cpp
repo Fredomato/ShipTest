@@ -38,6 +38,11 @@ extern GetItemEntry vanillaQueuedItemEntry;
 
 #define CVAR(v) "gHoliday.Gameplay." v
 
+#define MAX_FOLLOWING_TREES 32
+
+Actor* followingTrees[MAX_FOLLOWING_TREES];
+int followingTreeCount = 0;
+
 static CollisionPoly snowballPoly;
 static f32 raycastResult;
 
@@ -418,10 +423,16 @@ void OnSceneInit() {
 }
 
 float distanceToTree = 400.0f;
-float treeMoveSpeed = 10.0f;
+float distanceToFollow = 100.0f;
+float treeMoveSpeed = 5.0f;
 uint32_t corralledTrees = 0;
 std::vector<std::pair<Actor*, Vec3f>> treeSlots;
-bool isFollowing = false;
+bool isFollowing;
+
+void SetFollowing(void* treeActor) {
+    Actor* tree = (Actor*)treeActor;
+    Player* player = GET_PLAYER(gPlayState);
+}
 
 std::vector<std::pair<Actor*, Vec3f>> CreatePadGrid38(const Vec3f& center) {
     std::vector<std::pair<Actor*, Vec3f>> positions;
@@ -464,6 +475,12 @@ void MoveTreeActors(void* treeActor) {
         tree->world.pos.y = floorY;
     }
 
+    if (tree->xzDistToPlayer < distanceToFollow || tree->params >= 11) {
+        isFollowing = true;
+    }
+
+    float speed = treeMoveSpeed;
+
     if (tree->xzDistToPlayer > distanceToTree || tree->params >= 11) {
         return;
     }
@@ -472,14 +489,8 @@ void MoveTreeActors(void* treeActor) {
     Vec3f dir;
     Player* player = GET_PLAYER(gPlayState);
 
-    if (tree->flags & ACTOR_FLAG_HOOKSHOT_ATTACHED) {
-        isFollowing = true;
-    }
-
-    float sign = isFollowing ? -1.0f : 1.0f;
-
-    dir.x = tree->world.pos.x - player->actor.world.pos.x * sign;
-    dir.z = tree->world.pos.z - player->actor.world.pos.z * sign;
+    dir.x = tree->world.pos.x - player->actor.world.pos.x;
+    dir.z = tree->world.pos.z - player->actor.world.pos.z;
 
     dir.x += Rand_CenteredFloat(30.0f);
     dir.z += Rand_CenteredFloat(30.0f);
@@ -496,8 +507,10 @@ void MoveTreeActors(void* treeActor) {
     Vec3f start = tree->world.pos;
     Vec3f end = start;
 
-    end.x += dir.x * treeMoveSpeed;
-    end.z += dir.z * treeMoveSpeed;
+    float sign = isFollowing ? -1.0f : 1.0f;
+
+    end.x += dir.x * treeMoveSpeed * sign;
+    end.z += dir.z * treeMoveSpeed * sign;
 
     Vec3f hitPos;
 
@@ -587,6 +600,7 @@ static void OnConfigurationChanged() {
         if (gPlayState->sceneNum == SCENE_HYRULE_FIELD) {
             treeSlots = CreatePadGrid38({ 335.571f, -0.0f, 2677.854f });
             corralledTrees = 0;
+            isFollowing = false;
             Object_Spawn(&gPlayState->objectCtx, OBJECT_MJIN);
             Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_BG_MJIN, 335.571f, -0.0f, 2677.854f, 0, 0, 0, 1,
                         false);
