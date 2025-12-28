@@ -473,27 +473,27 @@ std::vector<std::pair<Actor*, Vec3f>> CreatePadGrid38(const Vec3f& center) {
     return positions;
 }
 
-void DrawFollowingTreeRopes(PlayState* play) {
-    // Iterate over all trees in your vector-of-bools system
-    for (auto& treeState : treeVector) {
-        Actor* tree = treeState.first;
-        bool following = treeState.second;
-        if (!following || tree == NULL)
-            continue;
-
-        Player* player = GET_PLAYER(play);
-
-        // Compute rope endpoints
-        Vec3f start = player->actor.world.pos;
-        start.y += 20.0f; // offset to Link's hand / hookshot tip
-
-        Vec3f end = tree->world.pos;
-        end.y += 50.0f; // offset to tree trunk top
-
-        // Draw the rope
-        DrawRope(start, end, 0xFFFFFF, 2.0f); // color: white, width: 2.0 units
-    }
-}
+//void DrawFollowingTreeRopes(PlayState* play) {
+//    // Iterate over all trees in your vector-of-bools system
+//    for (auto& treeState : treeVector) {
+//        Actor* tree = treeState.first;
+//        bool following = treeState.second;
+//        if (!following || tree == NULL)
+//            continue;
+//
+//        Player* player = GET_PLAYER(play);
+//
+//        // Compute rope endpoints
+//        Vec3f start = player->actor.world.pos;
+//        start.y += 20.0f; // offset to Link's hand / hookshot tip
+//
+//        Vec3f end = tree->world.pos;
+//        end.y += 50.0f; // offset to tree trunk top
+//
+//        // Draw the rope
+//        DrawRope(start, end, 0xFFFFFF, 2.0f); // color: white, width: 2.0 units
+//    }
+//}
 
 
 void MoveTreeActors(void* treeActor) {
