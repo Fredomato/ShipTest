@@ -1507,6 +1507,12 @@ extern "C" void Graph_StartFrame() {
 
             break;
         }
+
+        case KbScancode::LUS_KB_K: {
+            CVarSetInteger("gHoliday.Gameplay.RandomTraps.SpawnChance", 1);
+            break;
+        }
+
 #if defined(_WIN32) || defined(__APPLE__)
         case KbScancode::LUS_KB_F9: {
             // Toggle TTS

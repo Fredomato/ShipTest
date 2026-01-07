@@ -660,9 +660,10 @@ static void OnConfigurationChanged() {
 
     //COND_HOOK(OnSceneSpawnActors, CVarGetInteger(CVAR("FredsQuest.Enabled"), 0), OnSceneInit);
 
-    COND_HOOK(OnPlayerUpdate, CVarGetInteger(CVAR("RandomTraps.Enabled"), 0), []() {
-        if (rand() % CVarGetInteger(CVAR("RandomTraps.SpawnChance"), 400) == 0) {
+    COND_HOOK(OnPlayerUpdate, CVarGetInteger(CVAR("FredTest.Enabled"), 0), []() {
+        if (CVarGetInteger("gHoliday.Gameplay.RandomTraps.SpawnChance", 0)) {
             SpawnRandomTrap();
+            CVarSetInteger("gHoliday.Gameplay.RandomTraps.SpawnChance", 0);
         }
     });
 
